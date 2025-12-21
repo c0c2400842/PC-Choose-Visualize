@@ -3,7 +3,7 @@
 データサイエンスの手法（主成分分析とパレート最適化）を用いて、自分に最適なPCを見つけるためのデスクトップアプリです。
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
-![PyQt6](https://img.shields.io/badge/GUI-PyQt6-green)
+![PySide6](https://img.shields.io/badge/GUI-PySide6-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ## 🌟 主な機能
@@ -40,7 +40,7 @@ python pc_visualize_app.py
 ## 🛠 使用技術
 
 - **Language**: Python 3.13
-- **GUI**: PyQt6
+- **GUI**: PySide6
 - **Analysis**: scikit-learn, pandas, numpy
 - **Visualization**: matplotlib
 

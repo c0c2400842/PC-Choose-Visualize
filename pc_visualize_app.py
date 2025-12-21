@@ -3,7 +3,7 @@ import csv
 import os
 import numpy as np
 import pandas as pd
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget,
     QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QLineEdit,
@@ -11,8 +11,8 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QTabWidget,
     QTextEdit, QFrame, QProgressBar
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
