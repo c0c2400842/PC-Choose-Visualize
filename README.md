@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 ### 3. アプリの起動
 ```bash
-python fixed_pc_app.py
+python pc_visualize_app.py
 ```
 
 ## 📊 分析の仕組み

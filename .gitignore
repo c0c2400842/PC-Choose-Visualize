@@ -5,7 +5,7 @@
 /*/
 
 # アプリ本体と動作に必要なファイルのみ許可
-!fixed_pc_app.py
+!pc_visualize_app.py
 !pc_data.csv
 !README.md
 !requirements.txt
