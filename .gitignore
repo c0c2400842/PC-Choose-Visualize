@@ -1,0 +1,17 @@
+# 全てを無視
+*
+
+# フォルダも無視
+/*/
+
+# アプリ本体と動作に必要なファイルのみ許可
+!fixed_pc_app.py
+!pc_data.csv
+!README.md
+!requirements.txt
+!.gitignore
+
+# 開発環境や一時ファイルは引き続き無視（上記 * でカバーされますが明示）
+.venv/
+__pycache__/
+last_csv_path.txt
