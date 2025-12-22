@@ -21,68 +21,69 @@ HAS_MATPLOTLIB = True
 try:
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+    # 日本語フォントの設定 (Windows: MS Gothic, Mac: AppleGothic, etc.)
+    plt.rcParams['font.family'] = ['MS Gothic', 'Yu Gothic', 'Meiryo', 'sans-serif']
 except ModuleNotFoundError:
     HAS_MATPLOTLIB = False
 
 LAST_CSV_FILE = "last_csv_path.txt"
 
-# プリセット定義（w1: 総合性能 0-100, w2: 特化方向 -100 to 100）
+# プリセット定義（w_pc1: CPU vs GPU, w_pc2: 汎用性/バランス）
 PRESETS = {
-    "開発者向け": {
-        "w1": 90, "w2": 60,
+    "プログラマー": {
+        "w_pc1": 80, "w_pc2": 40,
         "color": "#1976D2",  # 青
         "description": "CPU・RAM重視"
     },
-    "ゲーマー向け": {
-        "w1": 60, "w2": -80,
+    "ゲーマー": {
+        "w_pc1": -90, "w_pc2": -20,
         "color": "#D32F2F",  # 赤
-        "description": "GPU・ストレージ重視"
+        "description": "GPU重視"
+    },
+    "動画編集者": {
+        "w_pc1": 20, "w_pc2": 90,
+        "color": "#7B1FA2",  # 紫
+        "description": "RAM・ストレージ重視"
     },
     "一般ユーザー": {
-        "w1": 70, "w2": 0,
+        "w_pc1": 0, "w_pc2": 0,
         "color": "#388E3C",  # 緑
         "description": "バランス型"
     },
-    "学生向け": {
-        "w1": 50, "w2": -40,
+    "AI・データ分析": {
+        "w_pc1": 50, "w_pc2": 70,
         "color": "#FFA000",  # オレンジ
-        "description": "コスパ重視"
-    },
-    "クリエイター": {
-        "w1": 90, "w2": 30,
-        "color": "#7B1FA2",  # 紫
-        "description": "高性能重視"
+        "description": "CPU・RAM・GPUバランス"
     }
 }
 
 # ================================
 # フォントサイズ設定（一箇所で管理）
 # ================================
-FONT_SCALE = 0.68  # フォントサイズの倍率（10%縮小: 0.75 -> 0.68）
+FONT_SCALE = 1.0  # 読みやすさ重視で1.0に設定
 
 class FontSize:
     """フォントサイズを一括管理するクラス"""
     # 左パネル（PCA情報）
     PCA_TITLE = int(18 * FONT_SCALE)
     PCA_LABEL = int(12 * FONT_SCALE)
-    PCA_VALUE = int(24 * FONT_SCALE)
+    PCA_VALUE = int(22 * FONT_SCALE)
     PCA_CUMSUM = int(14 * FONT_SCALE)
     PCA_CONTRIB_TITLE = int(14 * FONT_SCALE)
-    PCA_TABLE = 8 # PC1,PC2の表はサイズを維持
+    PCA_TABLE = 9
     
     # 右パネル（推奨PC）
     REC_TITLE = int(20 * FONT_SCALE)
     REC_PC_NAME = int(18 * FONT_SCALE)
-    REC_PRICE = int(36 * FONT_SCALE)
+    REC_PRICE = int(32 * FONT_SCALE)
     REC_SPECS = int(13 * FONT_SCALE)
     REC_SECTION_TITLE = int(16 * FONT_SCALE)
-    REC_PARETO = int(18 * FONT_SCALE)
+    REC_SCORE = int(18 * FONT_SCALE)
     REC_PRESET_LABEL = int(13 * FONT_SCALE)
     REC_PRESET = int(16 * FONT_SCALE)
     REC_WEIGHT = int(12 * FONT_SCALE)
-    REC_IDEAL_NAME = int(15 * FONT_SCALE)
-    REC_IDEAL_INFO = int(13 * FONT_SCALE)
-    REC_IDEAL_SUBTITLE = int(11 * FONT_SCALE)
+    REC_INFO = int(13 * FONT_SCALE)
+    REC_SUBTITLE = int(11 * FONT_SCALE)
     
     # ボタン・コントロール
     BTN_MAIN = int(14 * FONT_SCALE)
@@ -120,7 +121,7 @@ class PCAInfoPanel(QWidget):
         layout.addWidget(title)
         
         # ========== 説明テキスト ==========
-        self.explanation = QLabel("PC1: 総合スペックの高さ\nPC2: 特化方向")
+        self.explanation = QLabel("PC1: 性能の方向性\nPC2: 汎用性・バランス")
         self.explanation.setStyleSheet(f"""
             font-size: {FontSize.PCA_LABEL}px; 
             color: #616161;
@@ -135,7 +136,7 @@ class PCAInfoPanel(QWidget):
         layout.addSpacing(5)
         
         # ========== PC1寄与率 ==========
-        self.pc1_label = QLabel("PC1寄与率（総合性能）")
+        self.pc1_label = QLabel("PC1寄与率")
         self.pc1_label.setStyleSheet(f"font-size: {FontSize.PCA_LABEL}px; font-weight: bold;")
         layout.addWidget(self.pc1_label)
         
@@ -152,7 +153,7 @@ class PCAInfoPanel(QWidget):
                 border: 2px solid #4CAF50;
                 border-radius: 5px;
                 background-color: #E0E0E0;
-                height: 20px;
+                height: 15px;
             }
             QProgressBar::chunk {
                 background-color: #4CAF50;
@@ -161,9 +162,9 @@ class PCAInfoPanel(QWidget):
         layout.addWidget(self.pc1_bar)
         
         # ========== PC2寄与率 ==========
-        layout.addSpacing(8)
+        layout.addSpacing(5)
         
-        self.pc2_label = QLabel("PC2寄与率（特化方向）")
+        self.pc2_label = QLabel("PC2寄与率")
         self.pc2_label.setStyleSheet(f"font-size: {FontSize.PCA_LABEL}px; font-weight: bold;")
         layout.addWidget(self.pc2_label)
         
@@ -173,14 +174,14 @@ class PCAInfoPanel(QWidget):
         
         self.pc2_bar = QProgressBar()
         self.pc2_bar.setRange(0, 100)
-        self.pc2_bar.setValue(10)
+        self.pc2_bar.setValue(0)
         self.pc2_bar.setTextVisible(False)
         self.pc2_bar.setStyleSheet("""
             QProgressBar {
                 border: 2px solid #2196F3;
                 border-radius: 5px;
                 background-color: #E0E0E0;
-                height: 20px;
+                height: 15px;
             }
             QProgressBar::chunk {
                 background-color: #2196F3;
@@ -191,7 +192,7 @@ class PCAInfoPanel(QWidget):
         # ========== 累積寄与率 ==========
         layout.addSpacing(3)
         
-        self.cumsum_label = QLabel("累積寄与率: 89.9%")
+        self.cumsum_label = QLabel("累積寄与率: 0.0%")
         self.cumsum_label.setStyleSheet(f"""
             font-size: {FontSize.PCA_CUMSUM}px; 
             font-weight: bold; 
@@ -251,8 +252,8 @@ class PCAInfoPanel(QWidget):
         
         # 説明テキストの更新
         self.explanation.setText(f"PC1: {pc1_desc}\nPC2: {pc2_desc}")
-        self.pc1_label.setText(f"PC1寄与率（{pc1_desc}）")
-        self.pc2_label.setText(f"PC2寄与率（{pc2_desc}）")
+        self.pc1_label.setText(f"PC1: {pc1_desc}")
+        self.pc2_label.setText(f"PC2: {pc2_desc}")
         
         # PC1寄与率
         self.pc1_value.setText(f"{var_ratio[0]*100:.1f}%")
@@ -277,8 +278,8 @@ class PCAInfoPanel(QWidget):
             pc1_val = components[0, i]
             pc1_item = QTableWidgetItem(f"{pc1_val:+.3f}")
             pc1_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            if abs(pc1_val) > 0.5:
-                pc1_item.setBackground(QColor("#C8E6C9"))
+            if abs(pc1_val) > 0.4:
+                pc1_item.setBackground(QColor("#C8E6C9") if pc1_val > 0 else QColor("#FFCDD2"))
             self.contrib_table.setItem(i, 0, pc1_item)
             
             # PC2
@@ -286,8 +287,8 @@ class PCAInfoPanel(QWidget):
                 pc2_val = components[1, i]
                 pc2_item = QTableWidgetItem(f"{pc2_val:+.3f}")
                 pc2_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                if abs(pc2_val) > 0.5:
-                    pc2_item.setBackground(QColor("#BBDEFB"))
+                if abs(pc2_val) > 0.4:
+                    pc2_item.setBackground(QColor("#BBDEFB") if pc2_val > 0 else QColor("#FFE0B2"))
                 self.contrib_table.setItem(i, 1, pc2_item)
             else:
                 self.contrib_table.setItem(i, 1, QTableWidgetItem("0.000"))
@@ -308,7 +309,7 @@ class RecommendationPanel(QWidget):
         layout = QVBoxLayout(self)
         
         # ========== 総合評価1位PC ==========
-        title = QLabel("🏆 総合評価1位PC")
+        title = QLabel("🏆 あなたへの推奨PC")
         title.setStyleSheet(f"""
             font-size: {FontSize.REC_TITLE}px; 
             font-weight: bold; 
@@ -317,13 +318,9 @@ class RecommendationPanel(QWidget):
         """)
         layout.addWidget(title)
         
-        subtitle = QLabel("（グラフの★に最も近い実在PC）")
-        subtitle.setStyleSheet(f"font-size: {FontSize.REC_IDEAL_SUBTITLE}px; color: #757575; margin-top: -5px; margin-bottom: 5px;")
+        subtitle = QLabel("（嗜好に最も近いPC）")
+        subtitle.setStyleSheet(f"font-size: {FontSize.REC_SUBTITLE}px; color: #757575; margin-top: -5px; margin-bottom: 5px;")
         layout.addWidget(subtitle)
-        
-        ideal_desc = QLabel("※★(理想点) = 最高性能かつ最低価格の点")
-        ideal_desc.setStyleSheet(f"font-size: {FontSize.REC_IDEAL_SUBTITLE}px; color: #1976D2; font-style: italic; margin-bottom: 5px;")
-        layout.addWidget(ideal_desc)
         
         # ========== PC名 ==========
         self.pc_name = QLabel("「このデータで分析」をクリック")
@@ -364,19 +361,19 @@ class RecommendationPanel(QWidget):
         self.pc_specs.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.pc_specs)
         
-        # ========== 理想点からの距離 ==========
-        self.ideal_distance = QLabel("理想点からの距離: ―")
-        self.ideal_distance.setStyleSheet(f"""
-            font-size: {FontSize.REC_IDEAL_INFO}px; 
+        # ========== スコア ==========
+        self.match_score = QLabel("適合スコア: ―")
+        self.match_score.setStyleSheet(f"""
+            font-size: {FontSize.REC_SCORE}px; 
+            font-weight: bold;
             color: #757575;
-            background-color: white;
+            background-color: #E3F2FD;
             padding: 6px;
-            border-radius: 3px;
-            border: 1px solid #E0E0E0;
-            margin-top: 3px;
+            border-radius: 5px;
+            margin-top: 5px;
         """)
-        self.ideal_distance.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.ideal_distance)
+        self.match_score.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.match_score)
         
         # ========== 区切り線 ==========
         layout.addSpacing(6)
@@ -386,27 +383,7 @@ class RecommendationPanel(QWidget):
         layout.addWidget(separator2)
         layout.addSpacing(3)
         
-        # ========== パレート点数 ==========
-        pareto_title = QLabel("📊 分析結果")
-        pareto_title.setStyleSheet(f"font-size: {FontSize.REC_SECTION_TITLE}px; font-weight: bold;")
-        layout.addWidget(pareto_title)
-        
-        self.pareto_count = QLabel("分析後に表示")
-        self.pareto_count.setStyleSheet(f"""
-            font-size: {FontSize.REC_PARETO}px; 
-            font-weight: bold; 
-            color: #757575;
-            background-color: #E3F2FD;
-            padding: 5px;
-            border-radius: 5px;
-            margin-top: 2px;
-        """)
-        self.pareto_count.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.pareto_count)
-        
         # ========== 現在のプリセット ==========
-        layout.addSpacing(8)
-        
         preset_label = QLabel("【選択中のプリセット】")
         preset_label.setStyleSheet(f"font-size: {FontSize.REC_PRESET_LABEL}px; font-weight: bold; color: #757575;")
         layout.addWidget(preset_label)
@@ -423,7 +400,7 @@ class RecommendationPanel(QWidget):
         self.current_preset.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.current_preset)
         
-        self.weight_info = QLabel("w1=0.60, w2=0.40")
+        self.weight_info = QLabel("PC1=0.00, PC2=0.00")
         self.weight_info.setStyleSheet(f"""
             font-size: {FontSize.REC_WEIGHT}px; 
             color: #757575;
@@ -432,13 +409,23 @@ class RecommendationPanel(QWidget):
         self.weight_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.weight_info)
         
+        self.preset_desc = QLabel("")
+        self.preset_desc.setStyleSheet(f"""
+            font-size: {FontSize.REC_SUBTITLE}px; 
+            color: #616161;
+            font-style: italic;
+            margin-top: 2px;
+        """)
+        self.preset_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preset_desc.setWordWrap(True)
+        layout.addWidget(self.preset_desc)
+        
         # 下部の余白
         layout.addStretch()
     
-    def update_recommendation(self, ideal_pc, pareto_count, preset_name, w1, w2):
-        """推奨PC情報を更新（総合評価1位PCのみ表示）"""
-        # 総合評価1位PC
-        self.pc_name.setText(ideal_pc['model'])
+    def update_recommendation(self, best_pc, preset_name, w_pc1, w_pc2):
+        """推奨PC情報を更新"""
+        self.pc_name.setText(best_pc['model'])
         self.pc_name.setStyleSheet(f"""
             font-size: {FontSize.REC_PC_NAME}px; 
             font-weight: bold; 
@@ -449,7 +436,7 @@ class RecommendationPanel(QWidget):
             border: 3px solid #FFD700;
         """)
         
-        self.pc_price.setText(f"¥{ideal_pc['price']:,.0f}")
+        self.pc_price.setText(f"¥{best_pc['price']:,.0f}")
         self.pc_price.setStyleSheet(f"""
             font-size: {FontSize.REC_PRICE}px; 
             font-weight: bold; 
@@ -457,11 +444,11 @@ class RecommendationPanel(QWidget):
             margin: 10px 0;
         """)
         
-        specs_text = f"""CPU: {ideal_pc['cpu_score']:.0f}
-GPU: {ideal_pc['gpu_score']:.0f}
-RAM: {ideal_pc['ram_gb']:.0f} GB
-Storage: {ideal_pc['storage_gb']:.0f} GB
-性能スコア: {ideal_pc['perf']:.2f}"""
+        specs_text = f"""CPU: {best_pc['cpu_score']:.0f}
+GPU: {best_pc['gpu_score']:.0f}
+RAM: {best_pc['ram_gb']:.0f} GB
+SSD: {best_pc['storage_gb']:.0f} GB
+総合性能: {best_pc['total_perf']:.2f}"""
         self.pc_specs.setText(specs_text.strip())
         self.pc_specs.setStyleSheet(f"""
             font-size: {FontSize.REC_SPECS}px; 
@@ -473,33 +460,25 @@ Storage: {ideal_pc['storage_gb']:.0f} GB
         """)
         self.pc_specs.setAlignment(Qt.AlignmentFlag.AlignLeft)
         
-        # 理想点からの距離
-        self.ideal_distance.setText(f"理想点からの距離: {ideal_pc['distance']:.4f}")
-        self.ideal_distance.setStyleSheet(f"""
-            font-size: {FontSize.REC_IDEAL_INFO}px; 
-            color: #424242;
-            background-color: white;
-            padding: 6px;
-            border-radius: 3px;
-            border: 1px solid #E0E0E0;
-            margin-top: 3px;
-        """)
-        self.ideal_distance.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        self.pareto_count.setText(f"パレート最適解: {pareto_count}台")
-        self.pareto_count.setStyleSheet(f"""
-            font-size: {FontSize.REC_PARETO}px; 
-            font-weight: bold; 
+        self.match_score.setText(f"適合スコア: {best_pc['score']:.2f}")
+        self.match_score.setStyleSheet(f"""
+            font-size: {FontSize.REC_SCORE}px; 
+            font-weight: bold;
             color: #1976D2;
             background-color: #E3F2FD;
-            padding: 5px;
+            padding: 6px;
             border-radius: 5px;
-            margin-top: 2px;
+            margin-top: 5px;
         """)
-        self.pareto_count.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         self.current_preset.setText(preset_name)
-        self.weight_info.setText(f"w1={w1:.2f}, w2={w2:.2f}")
+        self.weight_info.setText(f"PC1={w_pc1:.2f}, PC2={w_pc2:.2f}")
+        
+        # プリセットの説明を表示
+        if preset_name in PRESETS:
+            self.preset_desc.setText(PRESETS[preset_name]["description"])
+        else:
+            self.preset_desc.setText("カスタム設定")
 
 
 # ================================
@@ -559,6 +538,10 @@ class CSVManager(QWidget):
         save_btn.clicked.connect(self.save_existing_csv)
         btns.addWidget(save_btn)
         
+        clear_btn = QPushButton("全消去")
+        clear_btn.clicked.connect(self.clear_all)
+        btns.addWidget(clear_btn)
+        
         layout.addLayout(btns)
         
         # テーブル表示
@@ -599,10 +582,19 @@ class CSVManager(QWidget):
         rows = sorted({i.row() for i in self.table.selectedItems()}, reverse=True)
         for r in rows:
             self.table.removeRow(r)
+            
+    def clear_all(self):
+        """全行を削除"""
+        if QMessageBox.question(self, "確認", "全てのデータを消去しますか？") == QMessageBox.StandardButton.Yes:
+            self.table.setRowCount(0)
     
     def _collect_models(self):
         """テーブル内のモデル名をリスト化"""
-        return [self.table.item(r, 0).text() for r in range(self.table.rowCount())]
+        models = []
+        for r in range(self.table.rowCount()):
+            item = self.table.item(r, 0)
+            models.append(item.text() if item else "")
+        return models
     
     def _check_duplicates(self):
         """重複モデル名をチェック"""
@@ -860,20 +852,20 @@ class PCApp(QMainWindow):
         slider_container.addSpacing(15)
         
         # PC1スライダー
-        w1_layout = QHBoxLayout()
-        self.w1_label = QLabel("総合性能重視: 70%")
-        self.w1_label.setStyleSheet(f"font-size: {FontSize.SLIDER_LABEL}px; font-weight: bold; color: #1976D2; min-width: 150px;")
-        w1_layout.addWidget(self.w1_label)
+        w_pc1_layout = QHBoxLayout()
+        self.w_pc1_label = QLabel("PC1 (CPU vs GPU): 0%")
+        self.w_pc1_label.setStyleSheet(f"font-size: {FontSize.SLIDER_LABEL}px; font-weight: bold; color: #1976D2; min-width: 200px;")
+        w_pc1_layout.addWidget(self.w_pc1_label)
         
-        self.w1 = QSlider(Qt.Orientation.Horizontal)
-        self.w1.setRange(0, 100)
-        self.w1.setValue(70)
-        self.w1.setMinimumWidth(400)
-        self.w1.setStyleSheet("""
+        self.w_pc1 = QSlider(Qt.Orientation.Horizontal)
+        self.w_pc1.setRange(-100, 100)
+        self.w_pc1.setValue(0)
+        self.w_pc1.setMinimumWidth(400)
+        self.w_pc1.setStyleSheet("""
             QSlider::groove:horizontal {
                 border: 1px solid #999999;
                 height: 10px;
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #E0E0E0, stop:1 #1976D2);
+                background: qlineargradient(x1:0, y1:0, x2:0.5, y2:0, x3:1, y3:0, stop:0 #D32F2F, stop:0.5 #E0E0E0, stop:1 #1976D2);
                 margin: 2px 0;
                 border-radius: 5px;
             }
@@ -886,40 +878,27 @@ class PCApp(QMainWindow):
                 border-radius: 10px;
             }
         """)
-        self.w1.valueChanged.connect(self.on_w1_changed)
-        w1_layout.addWidget(self.w1)
-        w1_layout.addStretch()
+        self.w_pc1.valueChanged.connect(self.on_weight_changed)
+        w_pc1_layout.addWidget(self.w_pc1)
+        w_pc1_layout.addStretch()
         
-        slider_container.addLayout(w1_layout)
+        slider_container.addLayout(w_pc1_layout)
         
         # PC2スライダー
-        w2_outer_layout = QVBoxLayout()
+        w_pc2_layout = QHBoxLayout()
+        self.w_pc2_label = QLabel("PC2 (汎用性): 0%")
+        self.w_pc2_label.setStyleSheet(f"font-size: {FontSize.SLIDER_LABEL}px; font-weight: bold; color: #2196F3; min-width: 200px;")
+        w_pc2_layout.addWidget(self.w_pc2_label)
         
-        w2_header = QHBoxLayout()
-        self.w2_label = QLabel("特化方向の調整: 0%")
-        self.w2_label.setStyleSheet(f"font-size: {FontSize.SLIDER_LABEL}px; font-weight: bold; color: #2196F3; min-width: 150px;")
-        w2_header.addWidget(self.w2_label)
-        
-        w2_desc = QLabel("← 減少で左側を重視 | 増加で右側を重視 →")
-        w2_desc.setStyleSheet(f"font-size: {FontSize.REC_IDEAL_SUBTITLE}px; color: #757575;")
-        w2_header.addWidget(w2_desc)
-        w2_header.addStretch()
-        w2_outer_layout.addLayout(w2_header)
-
-        w2_layout = QHBoxLayout()
-        self.w2_left_label = QLabel("SSD重視")
-        self.w2_left_label.setStyleSheet("color: #F44336; font-weight: bold;")
-        w2_layout.addWidget(self.w2_left_label)
-        
-        self.w2 = QSlider(Qt.Orientation.Horizontal)
-        self.w2.setRange(-100, 100)
-        self.w2.setValue(0)
-        self.w2.setMinimumWidth(400)
-        self.w2.setStyleSheet("""
+        self.w_pc2 = QSlider(Qt.Orientation.Horizontal)
+        self.w_pc2.setRange(-100, 100)
+        self.w_pc2.setValue(0)
+        self.w_pc2.setMinimumWidth(400)
+        self.w_pc2.setStyleSheet("""
             QSlider::groove:horizontal {
                 border: 1px solid #999999;
                 height: 10px;
-                background: qlineargradient(x1:0, y1:0, x2:0.5, y2:0, x3:1, y3:0, stop:0 #F44336, stop:0.5 #E0E0E0, stop:1 #2196F3);
+                background: qlineargradient(x1:0, y1:0, x2:0.5, y2:0, x3:1, y3:0, stop:0 #7B1FA2, stop:0.5 #E0E0E0, stop:1 #2196F3);
                 margin: 2px 0;
                 border-radius: 5px;
             }
@@ -932,66 +911,93 @@ class PCApp(QMainWindow):
                 border-radius: 10px;
             }
         """)
-        self.w2.valueChanged.connect(self.on_w2_changed)
-        w2_layout.addWidget(self.w2)
+        self.w_pc2.valueChanged.connect(self.on_weight_changed)
+        w_pc2_layout.addWidget(self.w_pc2)
+        w_pc2_layout.addStretch()
         
-        self.w2_right_label = QLabel("CPU重視")
-        self.w2_right_label.setStyleSheet("color: #2196F3; font-weight: bold;")
-        w2_layout.addWidget(self.w2_right_label)
-        
-        reset_btn = QPushButton("重みをリセット")
-        reset_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #757575;
-                color: white;
-                font-weight: bold;
+        slider_container.addLayout(w_pc2_layout)
+
+        # 価格フィルタースライダー
+        price_filter_layout = QHBoxLayout()
+        self.price_label = QLabel("予算上限: 無制限")
+        self.price_label.setStyleSheet(f"font-size: {FontSize.SLIDER_LABEL}px; font-weight: bold; color: #FF6F00; min-width: 200px;")
+        price_filter_layout.addWidget(self.price_label)
+
+        self.price_slider = QSlider(Qt.Orientation.Horizontal)
+        self.price_slider.setRange(5, 100) # 5万〜100万
+        self.price_slider.setValue(100)
+        self.price_slider.setMinimumWidth(400)
+        self.price_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #999999;
+                height: 10px;
+                background: #FFE0B2;
+                margin: 2px 0;
                 border-radius: 5px;
-                padding: 5px 10px;
             }
-            QPushButton:hover {
-                background-color: #616161;
+            QSlider::handle:horizontal {
+                background: #FF6F00;
+                border: 2px solid #E65100;
+                width: 20px;
+                height: 20px;
+                margin: -7px 0;
+                border-radius: 10px;
             }
         """)
-        reset_btn.clicked.connect(lambda: self.apply_preset("一般ユーザー"))
-        w2_layout.addWidget(reset_btn)
-        
-        w2_outer_layout.addLayout(w2_layout)
-        slider_container.addLayout(w2_outer_layout)
+        self.price_slider.valueChanged.connect(self.on_weight_changed)
+        price_filter_layout.addWidget(self.price_slider)
+        price_filter_layout.addStretch()
+
+        slider_container.addLayout(price_filter_layout)
         main_layout.addLayout(slider_container)
     
-    def on_w1_changed(self, value):
-        """PC1スライダーが変更された時の処理"""
-        self.w1_label.setText(f"総合性能重視: {value}%")
+    def on_weight_changed(self, value):
+        """スライダーが変更された時の共通処理"""
+        pc1_name = getattr(self, "pc1_desc", "PC1")
+        pc2_name = getattr(self, "pc2_desc", "PC2")
+        
+        self.w_pc1_label.setText(f"{pc1_name}: {self.w_pc1.value()}%")
+        self.w_pc2_label.setText(f"{pc2_name}: {self.w_pc2.value()}%")
+        
+        p_val = self.price_slider.value()
+        if p_val == 100:
+            self.price_label.setText("予算上限: 無制限")
+        else:
+            self.price_label.setText(f"予算上限: {p_val}万円")
+
         # 手動操作時はプリセット選択を解除
-        self.current_preset_name = "カスタム"
-        self.analyze_from_manager()
-    
-    def on_w2_changed(self, value):
-        """PC2スライダーが変更された時の処理"""
-        self.w2_label.setText(f"特化方向の調整: {value}%")
-        # 手動操作時はプリセット選択を解除
-        self.current_preset_name = "カスタム"
-        self.analyze_from_manager()
+        if not self.signals_blocked():
+            self.current_preset_name = "カスタム"
+        
+        # PCAは再実行せず、スコア計算と描画のみ更新
+        if hasattr(self, "df"):
+            self._calculate_scores_and_pareto()
+            self._update_visualization()
+            self._update_info_panels()
+
+    def signals_blocked(self):
+        return self.w_pc1.signalsBlocked() or self.w_pc2.signalsBlocked() or self.price_slider.signalsBlocked()
     
     def apply_preset(self, preset_name):
         """プリセット選択時の処理"""
         preset = PRESETS[preset_name]
-        
-        # 現在のプリセット名を記録
         self.current_preset_name = preset_name
         
-        # スライダーを更新
-        self.w1.blockSignals(True)
-        self.w2.blockSignals(True)
-        self.w1.setValue(preset["w1"])
-        self.w2.setValue(preset["w2"])
-        self.w1_label.setText(f"総合性能重視: {preset['w1']}%")
-        self.w2_label.setText(f"特化方向の調整: {preset['w2']}%")
-        self.w1.blockSignals(False)
-        self.w2.blockSignals(False)
+        # スライダーを更新（シグナルを一時停止して無限ループを防ぐ）
+        self.w_pc1.blockSignals(True)
+        self.w_pc2.blockSignals(True)
+        self.price_slider.blockSignals(True)
         
-        # 分析実行
-        self.analyze_from_manager()
+        self.w_pc1.setValue(preset["w_pc1"])
+        self.w_pc2.setValue(preset["w_pc2"])
+        self.price_slider.setValue(100) # プリセット時は予算リセット
+        
+        self.w_pc1.blockSignals(False)
+        self.w_pc2.blockSignals(False)
+        self.price_slider.blockSignals(False)
+        
+        # ラベル更新と分析結果の更新（PCAは再実行しない）
+        self.on_weight_changed(0)
     
     def reload_csv(self):
         """CSVタブのデータを再読込"""
@@ -1027,152 +1033,135 @@ class PCApp(QMainWindow):
             traceback.print_exc()
 
     def _run_pca(self):
-        """PCA（主成分分析）の実行"""
-        X = self.df[["cpu_score", "gpu_score", "ram_gb", "storage_gb"]].values
-        X_scaled = StandardScaler().fit_transform(X)
+        """PCA（主成分分析）の実行：性能の方向性とバランスを抽出"""
+        features = ["cpu_score", "gpu_score", "ram_gb", "storage_gb"]
+        X = self.df[features].values
         
-        n_comp = min(2, X_scaled.shape[0], X_scaled.shape[1])
+        # 1. 標準化（各特徴量のスケールを揃える）
+        self.scaler = StandardScaler()
+        X_scaled = self.scaler.fit_transform(X)
+        
+        # 2. 行中心化（各PCの「平均的な性能」を差し引く）
+        # これにより、PC1が「総合性能」ではなく「CPU寄りかGPU寄りか」などの「構成の偏り」を表すようになる
+        X_row_mean = X_scaled.mean(axis=1, keepdims=True)
+        X_centered = X_scaled - X_row_mean
+        
+        # 3. PCA実行
+        n_comp = min(2, X_centered.shape[0], X_centered.shape[1])
         self.pca = PCA(n_components=n_comp)
-        pcs = self.pca.fit_transform(X_scaled)
+        pcs = self.pca.fit_transform(X_centered)
         
         self.df["PC1"] = pcs[:, 0]
         self.df["PC2"] = pcs[:, 1] if pcs.shape[1] > 1 else 0
-        self.df["price_log"] = np.log(self.df["price"])
+        
+        # 4. 総合性能（サイズ用）と価格（色用）の準備
+        self.df["total_perf"] = X_row_mean.flatten()
+        self.df["price_norm"] = (self.df["price"] - self.df["price"].min()) / (self.df["price"].max() - self.df["price"].min() + 1e-9)
+
+        # 5. 軸の意味を判定
+        features_names = ['CPU', 'GPU', 'RAM', 'SSD']
+        components = self.pca.components_
+        pos_idx1 = np.argmax(components[0])
+        neg_idx1 = np.argmin(components[0])
+        self.pc1_desc = f"{features_names[neg_idx1]}重視 ↔ {features_names[pos_idx1]}重視"
+        if components.shape[0] >= 2:
+            pos_idx2 = np.argmax(components[1])
+            neg_idx2 = np.argmin(components[1])
+            self.pc2_desc = f"{features_names[neg_idx2]}重視 ↔ {features_names[pos_idx2]}重視"
+        else:
+            self.pc2_desc = "なし"
 
     def _calculate_scores_and_pareto(self):
-        """性能スコアの計算とパレート最適解の抽出"""
-        w1, w2 = self.w1.value() / 100.0, self.w2.value() / 100.0
-        self.df["perf"] = w1 * self.df["PC1"] + w2 * self.df["PC2"]
+        """嗜好ベクトルによる推薦スコアの計算"""
+        w_pc1 = self.w_pc1.value() / 100.0
+        w_pc2 = self.w_pc2.value() / 100.0
         
-        # 理想点の定義（最高性能・最低価格）
-        self.ideal_perf = self.df["perf"].max()
-        self.ideal_price_log = self.df["price_log"].min()
+        # 予算フィルター
+        max_price = self.price_slider.value() * 10000
+        if self.price_slider.value() == 100:
+            max_price = float('inf')
         
-        # パレート最適解の抽出
-        pareto_indices = []
-        for i in range(len(self.df)):
-            is_dominated = False
-            for j in range(len(self.df)):
-                if i == j: continue
-                # 性能が高く、かつ価格が安いものがあればドミネートされる
-                if (self.df.iloc[j]["perf"] >= self.df.iloc[i]["perf"] and 
-                    self.df.iloc[j]["price"] <= self.df.iloc[i]["price"]):
-                    if (self.df.iloc[j]["perf"] > self.df.iloc[i]["perf"] or 
-                        self.df.iloc[j]["price"] < self.df.iloc[i]["price"]):
-                        is_dominated = True
-                        break
-            if not is_dominated:
-                pareto_indices.append(i)
+        self.df["is_affordable"] = self.df["price"] <= max_price
         
-        self.df["is_pareto"] = False
-        self.df.loc[self.df.index[pareto_indices], "is_pareto"] = True
+        # スコア計算：嗜好ベクトルとの内積（方向の一致度）
+        # PC1, PC2空間での位置がユーザの望む方向にあるものを高く評価
+        self.df["score"] = w_pc1 * self.df["PC1"] + w_pc2 * self.df["PC2"]
         
-        # 理想点からの距離計算（パレート解のみ）
-        pareto_df = self.df[self.df["is_pareto"]].copy()
-        perf_range = self.df["perf"].max() - self.df["perf"].min()
-        price_log_range = self.df["price_log"].max() - self.df["price_log"].min()
-        
-        if perf_range > 0 and price_log_range > 0:
-            # 正規化された距離（視覚的な距離に合わせるためprice_logを使用）
-            pareto_df["norm_perf"] = (self.ideal_perf - pareto_df["perf"]) / perf_range
-            pareto_df["norm_price"] = (pareto_df["price_log"] - self.ideal_price_log) / price_log_range
-            pareto_df["distance"] = np.sqrt(pareto_df["norm_perf"]**2 + pareto_df["norm_price"]**2)
+        # 予算内のPCから最高スコアを選択
+        affordable_df = self.df[self.df["is_affordable"]]
+        if not affordable_df.empty:
+            self.best_pc = affordable_df.sort_values("score", ascending=False).iloc[0]
         else:
-            pareto_df["distance"] = 0
-            
-        self.ideal_best = pareto_df.sort_values("distance").iloc[0]
-        self.pareto_count = len(pareto_df)
+            # 予算内がない場合は全PCから
+            self.best_pc = self.df.sort_values("score", ascending=False).iloc[0]
 
     def _update_visualization(self):
-        """グラフの更新"""
+        """グラフの更新：PCA空間（構成の偏り）を可視化"""
         if not HAS_MATPLOTLIB:
             return
             
         self.ax.clear()
-        w1, w2 = self.w1.value() / 100.0, self.w2.value() / 100.0
         
-        # 非パレート点
-        non_pareto = self.df[~self.df["is_pareto"]]
-        self.ax.scatter(non_pareto["perf"], non_pareto["price_log"],
-                       c="lightgray", s=80, alpha=0.4, label="Other", zorder=1)
+        # 散布図の描画
+        # 色：価格（安いほど明るい/高いほど暗い）
+        # サイズ：総合性能（大きいほど高性能）
+        scatter = self.ax.scatter(
+            self.df["PC1"], self.df["PC2"],
+            c=self.df["price"], cmap="viridis_r",
+            s=(self.df["total_perf"] - self.df["total_perf"].min() + 1) * 100,
+            alpha=0.6, edgecolors="white", linewidth=0.5, label="PCモデル"
+        )
         
-        # パレート点（総合評価1位以外）
-        pareto_df = self.df[self.df["is_pareto"]]
-        pareto_others = pareto_df[pareto_df['model'] != self.ideal_best['model']]
-        if not pareto_others.empty:
-            self.ax.scatter(pareto_others["perf"], pareto_others["price_log"],
-                           c="#4CAF50", s=250, label="Pareto Front",
-                           edgecolors='black', linewidths=2, zorder=3, alpha=0.8)
+        # 予算外のPCをグレーアウト
+        out_of_budget = self.df[~self.df["is_affordable"]]
+        if not out_of_budget.empty:
+            self.ax.scatter(
+                out_of_budget["PC1"], out_of_budget["PC2"],
+                c="lightgray", s=(out_of_budget["total_perf"] - out_of_budget["total_perf"].min() + 1) * 100,
+                alpha=0.3, edgecolors="none", zorder=2
+            )
+
+        # 推奨PCを強調
+        self.ax.scatter(
+            self.best_pc["PC1"], self.best_pc["PC2"],
+            c="red", s=(self.best_pc["total_perf"] - self.df["total_perf"].min() + 1) * 150,
+            marker="*", edgecolors="yellow", linewidth=1.5, zorder=10, label="推奨PC"
+        )
         
-        # 総合評価1位PC
-        self.ax.scatter(self.ideal_best["perf"], self.ideal_best["price_log"],
-                       c="#8BC34A", s=400, label="Best PC",
-                       edgecolors='#FFD700', linewidths=4, zorder=5, marker='o')
+        # 軸ラベルとタイトルの設定
+        self.ax.set_xlabel(self.pc1_desc, fontsize=FontSize.GRAPH_AXIS, fontweight='bold')
+        self.ax.set_ylabel(self.pc2_desc, fontsize=FontSize.GRAPH_AXIS, fontweight='bold')
+        self.ax.set_title("PC構成分析 (PCA空間)", fontsize=FontSize.GRAPH_TITLE, fontweight='bold')
         
-        # 理想点
-        self.ax.scatter(self.ideal_perf, self.ideal_price_log,
-                       marker="*", s=500, c="#FFD700",
-                       label="Ideal Point", zorder=4, edgecolors='#FF6F00')
-        
-        self.ax.set_xlabel("Performance Score", fontsize=FontSize.GRAPH_AXIS, fontweight='bold')
-        self.ax.set_ylabel("Price (log scale)", fontsize=FontSize.GRAPH_AXIS, fontweight='bold')
-        self.ax.set_title(f"Cost-Performance Analysis (w1={w1:.2f}, w2={w2:.2f})",
-                        fontsize=FontSize.GRAPH_TITLE, fontweight='bold')
-        self.ax.grid(True, alpha=0.3, linestyle='--')
-        self.ax.legend(loc='upper left', fontsize=FontSize.GRAPH_LEGEND)
+        # カラーバー（価格）の更新
+        if hasattr(self, "colorbar"):
+            try:
+                self.colorbar.remove()
+            except:
+                pass
+        self.colorbar = self.fig.colorbar(scatter, ax=self.ax, label="価格 (円)")
+            
+        self.ax.grid(True, alpha=0.2)
+        self.ax.legend(loc='best', fontsize=FontSize.GRAPH_LEGEND)
         
         self.canvas.draw()
 
     def _update_info_panels(self):
         """左右のパネルを更新"""
-        # PCAの各成分の意味を動的に判定
-        features = ['CPU', 'GPU', 'RAM', 'SSD']
-        components = self.pca.components_
-        
-        # PC1: 全て正なら「総合性能」、そうでなければ最大寄与
-        if np.all(components[0] >= 0):
-            pc1_desc = "総合スペック"
-        else:
-            max_idx = np.argmax(np.abs(components[0]))
-            pc1_desc = f"{features[max_idx]}重視"
-            
-        # PC2: 正負の最大寄与を特定して「A vs B」とする
-        if components.shape[0] >= 2:
-            pos_idx = np.argmax(components[1])
-            neg_idx = np.argmin(components[1])
-            pc2_pos_name = features[pos_idx]
-            pc2_neg_name = features[neg_idx]
-            
-            if components[1, pos_idx] > 0.3 and components[1, neg_idx] < -0.3:
-                pc2_desc = f"{pc2_pos_name} vs {pc2_neg_name}"
-            else:
-                max_idx = np.argmax(np.abs(components[1]))
-                pc2_desc = f"{features[max_idx]}特化"
-        else:
-            pc2_pos_name = "右側"
-            pc2_neg_name = "左側"
-            pc2_desc = "なし"
-
-        # スライダーのラベルを更新
-        self.w2_left_label.setText(f"{pc2_neg_name}重視")
-        self.w2_right_label.setText(f"{pc2_pos_name}重視")
-
         # 左パネル
         self.pca_panel.update_pca_info(
             self.pca, 
             self.pca.explained_variance_ratio_,
-            pc1_desc=pc1_desc,
-            pc2_desc=pc2_desc
+            pc1_desc=self.pc1_desc,
+            pc2_desc=self.pc2_desc
         )
         
         # 右パネル
-        self.ideal_best_model = self.ideal_best['model']
         self.recommendation_panel.update_recommendation(
-            ideal_pc=self.ideal_best,
-            pareto_count=self.pareto_count,
+            best_pc=self.best_pc,
             preset_name=self.current_preset_name,
-            w1=self.w1.value() / 100.0,
-            w2=self.w2.value() / 100.0
+            w_pc1=self.w_pc1.value() / 100.0,
+            w_pc2=self.w_pc2.value() / 100.0
         )
         
         # プリセットボタンのハイライト更新
@@ -1219,43 +1208,31 @@ class PCApp(QMainWindow):
         if not hasattr(self, "df") or event.inaxes != self.ax:
             return
         
-        # 理想点の近くをクリックしたかチェック
-        if hasattr(self, 'ideal_perf') and hasattr(self, 'ideal_price_log'):
-            ideal_dist = (self.ideal_perf - event.xdata)**2 + (self.ideal_price_log - event.ydata)**2
-            # 理想点が最も近い場合（閾値を設定）
-            if ideal_dist < 0.05:
-                QMessageBox.information(
-                    self,
-                    "理想点",
-                    "これは理想的な点（最高性能・最低価格）です。\n実在するPCではありません。"
-                )
-                return
-        
-        # まず全PCから対数空間で最も近い点を探す
-        dists_all = (self.df["perf"] - event.xdata)**2 + (self.df["price_log"] - event.ydata)**2
-        idx = dists_all.idxmin()
+        # PCA空間で最も近い点を探す
+        dists = (self.df["PC1"] - event.xdata)**2 + (self.df["PC2"] - event.ydata)**2
+        idx = dists.idxmin()
         row = self.df.loc[idx]
         
-        # 総合評価1位かどうかを判定
+        # 推奨PCかどうかを判定
         is_best = False
-        if hasattr(self, 'ideal_best_model'):
-            is_best = (row['model'] == self.ideal_best_model)
+        if hasattr(self, 'best_pc'):
+            is_best = (row['model'] == self.best_pc['model'])
         
-        best_mark = "🏆 " if is_best else ""
-        pareto_status = "はい" if row['is_pareto'] else "いいえ"
+        best_mark = "⭐ " if is_best else ""
+        budget_status = "予算内" if row['is_affordable'] else "予算外"
         
         QMessageBox.information(
             self,
             f"{best_mark}モデル詳細",
             f"モデル: {row['model']}\n"
-            f"価格: {row['price']:,.0f} 円\n"
+            f"価格: {row['price']:,.0f} 円 ({budget_status})\n"
             f"CPUスコア: {row['cpu_score']:.0f}\n"
             f"GPUスコア: {row['gpu_score']:.0f}\n"
             f"RAM: {row['ram_gb']:.1f} GB\n"
-            f"Storage: {row['storage_gb']:.0f} GB\n"
-            f"性能スコア: {row['perf']:.2f}\n"
-            f"パレート最適: {pareto_status}"
-            + (f"\n\n🏆 総合評価1位PC" if is_best else "")
+            f"SSD: {row['storage_gb']:.0f} GB\n"
+            f"総合性能: {row['total_perf']:.2f}\n"
+            f"適合スコア: {row['score']:.2f}"
+            + (f"\n\n⭐ あなたへの推奨PC" if is_best else "")
         )
     
     def load_last_csv(self):
