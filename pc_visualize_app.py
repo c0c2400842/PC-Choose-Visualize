@@ -1097,9 +1097,13 @@ class PCApp(QMainWindow):
 
     def _update_visualization(self):
         """グラフの更新：PCA空間（構成の偏り）を可視化"""
-        if not HAS_MATPLOTLIB:
+        if not HAS_MATPLOTLIB or not hasattr(self, "pca"):
             return
             
+        # 現在の表示範囲を保持（スライダー操作で表示が飛ばないようにする）
+        xlim = self.ax.get_xlim()
+        ylim = self.ax.get_ylim()
+        
         self.ax.clear()
         
         # 散布図の描画
@@ -1133,16 +1137,26 @@ class PCApp(QMainWindow):
         self.ax.set_ylabel(self.pc2_desc, fontsize=FontSize.GRAPH_AXIS, fontweight='bold')
         self.ax.set_title("PC構成分析 (PCA空間)", fontsize=FontSize.GRAPH_TITLE, fontweight='bold')
         
-        # カラーバー（価格）の更新
-        if hasattr(self, "colorbar"):
-            try:
-                self.colorbar.remove()
-            except:
-                pass
-        self.colorbar = self.fig.colorbar(scatter, ax=self.ax, label="価格 (円)")
+        # カラーバーの更新（既存の軸を再利用して「つぶれ」を防止）
+        if not hasattr(self, "cax"):
+            from mpl_toolkits.axes_grid1 import make_axes_locatable
+            divider = make_axes_locatable(self.ax)
+            self.cax = divider.append_axes("right", size="5%", pad=0.1)
+            self.colorbar = self.fig.colorbar(scatter, cax=self.cax, label="価格 (円)")
+        else:
+            # 2回目以降は中身だけ更新
+            self.colorbar = self.fig.colorbar(scatter, cax=self.cax, label="価格 (円)")
             
         self.ax.grid(True, alpha=0.2)
         self.ax.legend(loc='best', fontsize=FontSize.GRAPH_LEGEND)
+        
+        # 範囲の固定（同じ分析結果を表示している間のみ）
+        if hasattr(self, "_prev_pca_id") and self._prev_pca_id == id(self.pca):
+            self.ax.set_xlim(xlim)
+            self.ax.set_ylim(ylim)
+        else:
+            self._prev_pca_id = id(self.pca)
+            self.fig.tight_layout()
         
         self.canvas.draw()
 
