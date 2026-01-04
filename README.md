@@ -1,6 +1,6 @@
 # PC構成分析・推奨アプリ (PCA & Preference Analysis)
 
-データサイエンスの手法（主成分分析）を用いて、PCのスペック構成を可視化し、ユーザーの好みに最適なPCを提案するデスクトップアプリケーションです。
+データサイエンスの手法（主成分分析）を用いて、PCのスペック構成を可視化し、ユーザーの用途によって最適なPCが異なることを示す目的で作成されたデスクトップアプリケーションです。
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![PySide6](https://img.shields.io/badge/GUI-PySide6-green)
