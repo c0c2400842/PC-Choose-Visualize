@@ -28,33 +28,37 @@ except ModuleNotFoundError:
 
 LAST_CSV_FILE = "last_csv_path.txt"
 
-# プリセット定義（w_pc2: 構成バランス CPU重視↔GPU/容量重視）
-# 性能レベルは予算スライダーで制御するため、w_pc1は廃止
+# プリセット定義（w_pc1: 性能レベル, w_pc2: 構成バランス）
 PRESETS = {
     "プログラマー": {
+        "w_pc1": 70,
         "w_pc2": 80,
         "color": "#1976D2",  # 青
-        "description": "CPU・RAM重視（コンパイル・開発向け）"
+        "description": "高性能・CPU重視（コンパイル・開発向け）"
     },
     "ゲーマー": {
+        "w_pc1": 90,
         "w_pc2": -90,
         "color": "#D32F2F",  # 赤
-        "description": "GPU・ストレージ重視（ゲーム向け）"
+        "description": "最高性能・GPU重視（ゲーム向け）"
     },
     "動画編集者": {
+        "w_pc1": 80,
         "w_pc2": -60,
         "color": "#7B1FA2",  # 紫
-        "description": "GPU・容量重視（動画編集向け）"
+        "description": "高性能・GPU/容量重視（動画編集向け）"
     },
     "一般ユーザー": {
+        "w_pc1": 0,
         "w_pc2": 0,
         "color": "#388E3C",  # 緑
-        "description": "バランス型（一般用途）"
+        "description": "標準性能・バランス型（一般用途）"
     },
     "AI・データ分析": {
+        "w_pc1": 60,
         "w_pc2": 50,
         "color": "#FFA000",  # オレンジ
-        "description": "CPU重視（計算処理向け）"
+        "description": "高性能・CPU重視（計算処理向け）"
     }
 }
 
@@ -401,7 +405,7 @@ class RecommendationPanel(QWidget):
         self.current_preset.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.current_preset)
         
-        self.weight_info = QLabel("PC1=0.00, PC2=0.00")
+        self.weight_info = QLabel("性能=0%, 構成=0%")
         self.weight_info.setStyleSheet(f"""
             font-size: {FontSize.REC_WEIGHT}px; 
             color: #757575;
@@ -424,7 +428,7 @@ class RecommendationPanel(QWidget):
         # 下部の余白
         layout.addStretch()
     
-    def update_recommendation(self, best_pc, preset_name, w_pc2):
+    def update_recommendation(self, best_pc, preset_name, w_pc1, w_pc2):
         """推奨PC情報を更新"""
         self.pc_name.setText(best_pc['model'])
         self.pc_name.setStyleSheet(f"""
@@ -473,7 +477,7 @@ SSD: {best_pc['storage_gb']:.0f} GB
         """)
         
         self.current_preset.setText(preset_name)
-        self.weight_info.setText(f"構成バランス={w_pc2:.2f}")
+        self.weight_info.setText(f"性能={int(w_pc1*100)}%, 構成={int(w_pc2*100)}%")
         
         # プリセットの説明を表示
         if preset_name in PRESETS:
@@ -852,7 +856,41 @@ class PCApp(QMainWindow):
         slider_container = QVBoxLayout()
         slider_container.addSpacing(15)
         
-        # 構成バランススライダー（データ読込後に動的ラベルが設定される）
+        # PC1（性能レベル）スライダー
+        w_pc1_layout = QHBoxLayout()
+        self.w_pc1_label = QLabel("PC1: 0% (データ読込後に表示)")
+        self.w_pc1_label.setStyleSheet(f"font-size: {FontSize.SLIDER_LABEL}px; font-weight: bold; color: #4CAF50; min-width: 250px;")
+        w_pc1_layout.addWidget(self.w_pc1_label)
+        
+        self.w_pc1 = QSlider(Qt.Orientation.Horizontal)
+        self.w_pc1.setRange(-100, 100)
+        self.w_pc1.setValue(0)
+        self.w_pc1.setMinimumWidth(400)
+        self.w_pc1.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #999999;
+                height: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:0.5, y2:0, x3:1, y3:0, stop:0 #BDBDBD, stop:0.5 #E0E0E0, stop:1 #4CAF50);
+                margin: 2px 0;
+                border-radius: 5px;
+            }
+            QSlider::handle:horizontal {
+                background: #4CAF50;
+                border: 2px solid #388E3C;
+                width: 20px;
+                height: 20px;
+                margin: -7px 0;
+                border-radius: 10px;
+            }
+        """)
+        self.w_pc1.valueChanged.connect(self.on_weight_changed)
+        w_pc1_layout.addWidget(self.w_pc1)
+        w_pc1_layout.addStretch()
+        
+        slider_container.addLayout(w_pc1_layout)
+        slider_container.addSpacing(10)
+        
+        # PC2（構成バランス）スライダー（データ読込後に動的ラベルが設定される）
         w_pc2_layout = QHBoxLayout()
         self.w_pc2_label = QLabel("PC2: 0% (データ読込後に表示)")
         self.w_pc2_label.setStyleSheet(f"font-size: {FontSize.SLIDER_LABEL}px; font-weight: bold; color: #2196F3; min-width: 250px;")
@@ -921,12 +959,29 @@ class PCApp(QMainWindow):
     
     def on_weight_changed(self, value):
         """スライダーが変更された時の共通処理"""
-        # 動的に生成されたPC2の軸ラベルを使用（データ読込前はデフォルト値）
+        # 動的に生成されたPC1の軸ラベルを使用（データ読込前はデフォルト値）
+        pc1_desc = getattr(self, "pc1_desc", "性能レベル")
         pc2_desc = getattr(self, "pc2_desc", "構成バランス")
+        
+        # PC1スライダーの表示（動的ラベルを使用）
+        perf_val = self.w_pc1.value()
+        if "↔" in pc1_desc:
+            parts = pc1_desc.split("↔")
+            left_label = parts[0].strip()
+            right_label = parts[1].strip()
+            
+            if perf_val > 20:
+                direction = f"→ {right_label}"
+            elif perf_val < -20:
+                direction = f"{left_label} ←"
+            else:
+                direction = "中間"
+            self.w_pc1_label.setText(f"PC1: {perf_val}% ({direction})")
+        else:
+            self.w_pc1_label.setText(f"PC1: {perf_val}%")
         
         # PC2スライダーの表示（動的ラベルを使用）
         balance_val = self.w_pc2.value()
-        # 軸ラベルから左側と右側の意味を抽出（"左 ↔ 右"の形式を想定）
         if "↔" in pc2_desc:
             parts = pc2_desc.split("↔")
             left_label = parts[0].strip()
@@ -940,7 +995,6 @@ class PCApp(QMainWindow):
                 direction = "中間"
             self.w_pc2_label.setText(f"PC2: {balance_val}% ({direction})")
         else:
-            # ↔が含まれない場合（データ読込前など）
             self.w_pc2_label.setText(f"PC2: {balance_val}%")
         
         p_val = self.price_slider.value()
@@ -960,7 +1014,7 @@ class PCApp(QMainWindow):
             self._update_info_panels()
 
     def signals_blocked(self):
-        return self.w_pc2.signalsBlocked() or self.price_slider.signalsBlocked()
+        return self.w_pc1.signalsBlocked() or self.w_pc2.signalsBlocked() or self.price_slider.signalsBlocked()
     
     def apply_preset(self, preset_name):
         """プリセット選択時の処理"""
@@ -968,12 +1022,15 @@ class PCApp(QMainWindow):
         self.current_preset_name = preset_name
         
         # スライダーを更新（シグナルを一時停止して無限ループを防ぐ）
+        self.w_pc1.blockSignals(True)
         self.w_pc2.blockSignals(True)
         self.price_slider.blockSignals(True)
         
+        self.w_pc1.setValue(preset["w_pc1"])
         self.w_pc2.setValue(preset["w_pc2"])
         self.price_slider.setValue(100) # プリセット時は予算リセット
         
+        self.w_pc1.blockSignals(False)
         self.w_pc2.blockSignals(False)
         self.price_slider.blockSignals(False)
         
@@ -1100,6 +1157,7 @@ class PCApp(QMainWindow):
 
     def _calculate_scores_and_pareto(self):
         """嗜好ベクトルによる推薦スコアの計算"""
+        w_pc1 = self.w_pc1.value() / 100.0
         w_pc2 = self.w_pc2.value() / 100.0
         
         # 予算フィルター
@@ -1116,22 +1174,22 @@ class PCApp(QMainWindow):
         pc1_min = score_df["PC1"].min()
         pc1_max = score_df["PC1"].max()
         if pc1_max - pc1_min > 1e-9:
-            pc1_norm = (score_df["PC1"] - pc1_min) / (pc1_max - pc1_min)
+            pc1_norm = (score_df["PC1"] - pc1_min) / (pc1_max - pc1_min)  # 0-1に正規化
+            pc1_scaled = (pc1_norm - 0.5) * 2  # -1～+1の範囲に変換
         else:
-            pc1_norm = 0.5
+            pc1_scaled = 0
         
         pc2_min = score_df["PC2"].min()
         pc2_max = score_df["PC2"].max()
         if pc2_max - pc2_min > 1e-9:
             pc2_norm = (score_df["PC2"] - pc2_min) / (pc2_max - pc2_min)  # 0-1に正規化
-            # w_pc2が-1～+1の範囲なので、-1～+1にスケール
             pc2_scaled = (pc2_norm - 0.5) * 2  # -1～+1の範囲に変換
         else:
             pc2_scaled = 0
         
-        # スコア = 性能(50%) + 構成の好み(50%)
-        # 両方とも-1～+1の範囲で同等に評価
-        self.df.loc[score_df.index, "score"] = 0.5 * (pc1_norm - 0.5) * 2 + 0.5 * w_pc2 * pc2_scaled
+        # スコア = PC1の嗜好(50%) + PC2の嗜好(50%)
+        # 両軸とも-1～+1の範囲で同等に評価（データサイエンス的に正しい）
+        self.df.loc[score_df.index, "score"] = 0.5 * w_pc1 * pc1_scaled + 0.5 * w_pc2 * pc2_scaled
         
         # 最高スコアのPCを選択（予算内優先）
         if self.df["is_affordable"].any():
@@ -1231,6 +1289,7 @@ class PCApp(QMainWindow):
         self.recommendation_panel.update_recommendation(
             best_pc=self.best_pc,
             preset_name=self.current_preset_name,
+            w_pc1=self.w_pc1.value() / 100.0,
             w_pc2=self.w_pc2.value() / 100.0
         )
         
