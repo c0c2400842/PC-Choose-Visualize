@@ -28,32 +28,33 @@ except ModuleNotFoundError:
 
 LAST_CSV_FILE = "last_csv_path.txt"
 
-# プリセット定義（w_pc1: CPU vs GPU, w_pc2: 汎用性/バランス）
+# プリセット定義（w_pc2: 構成バランス CPU重視↔GPU/容量重視）
+# 性能レベルは予算スライダーで制御するため、w_pc1は廃止
 PRESETS = {
     "プログラマー": {
-        "w_pc1": 80, "w_pc2": 40,
+        "w_pc2": 80,
         "color": "#1976D2",  # 青
-        "description": "CPU・RAM重視"
+        "description": "CPU・RAM重視（コンパイル・開発向け）"
     },
     "ゲーマー": {
-        "w_pc1": -90, "w_pc2": -20,
+        "w_pc2": -90,
         "color": "#D32F2F",  # 赤
-        "description": "GPU重視"
+        "description": "GPU・ストレージ重視（ゲーム向け）"
     },
     "動画編集者": {
-        "w_pc1": 20, "w_pc2": 90,
+        "w_pc2": -60,
         "color": "#7B1FA2",  # 紫
-        "description": "RAM・ストレージ重視"
+        "description": "GPU・容量重視（動画編集向け）"
     },
     "一般ユーザー": {
-        "w_pc1": 0, "w_pc2": 0,
+        "w_pc2": 0,
         "color": "#388E3C",  # 緑
-        "description": "バランス型"
+        "description": "バランス型（一般用途）"
     },
     "AI・データ分析": {
-        "w_pc1": 50, "w_pc2": 70,
+        "w_pc2": 50,
         "color": "#FFA000",  # オレンジ
-        "description": "CPU・RAM・GPUバランス"
+        "description": "CPU重視（計算処理向け）"
     }
 }
 
@@ -121,7 +122,7 @@ class PCAInfoPanel(QWidget):
         layout.addWidget(title)
         
         # ========== 説明テキスト ==========
-        self.explanation = QLabel("PC1: 性能の方向性\nPC2: 汎用性・バランス")
+        self.explanation = QLabel("データ読込後に\n軸の意味を自動判定")
         self.explanation.setStyleSheet(f"""
             font-size: {FontSize.PCA_LABEL}px; 
             color: #616161;
@@ -423,7 +424,7 @@ class RecommendationPanel(QWidget):
         # 下部の余白
         layout.addStretch()
     
-    def update_recommendation(self, best_pc, preset_name, w_pc1, w_pc2):
+    def update_recommendation(self, best_pc, preset_name, w_pc2):
         """推奨PC情報を更新"""
         self.pc_name.setText(best_pc['model'])
         self.pc_name.setStyleSheet(f"""
@@ -472,7 +473,7 @@ SSD: {best_pc['storage_gb']:.0f} GB
         """)
         
         self.current_preset.setText(preset_name)
-        self.weight_info.setText(f"PC1={w_pc1:.2f}, PC2={w_pc2:.2f}")
+        self.weight_info.setText(f"構成バランス={w_pc2:.2f}")
         
         # プリセットの説明を表示
         if preset_name in PRESETS:
@@ -851,43 +852,10 @@ class PCApp(QMainWindow):
         slider_container = QVBoxLayout()
         slider_container.addSpacing(15)
         
-        # PC1スライダー
-        w_pc1_layout = QHBoxLayout()
-        self.w_pc1_label = QLabel("PC1 (CPU vs GPU): 0%")
-        self.w_pc1_label.setStyleSheet(f"font-size: {FontSize.SLIDER_LABEL}px; font-weight: bold; color: #1976D2; min-width: 200px;")
-        w_pc1_layout.addWidget(self.w_pc1_label)
-        
-        self.w_pc1 = QSlider(Qt.Orientation.Horizontal)
-        self.w_pc1.setRange(-100, 100)
-        self.w_pc1.setValue(0)
-        self.w_pc1.setMinimumWidth(400)
-        self.w_pc1.setStyleSheet("""
-            QSlider::groove:horizontal {
-                border: 1px solid #999999;
-                height: 10px;
-                background: qlineargradient(x1:0, y1:0, x2:0.5, y2:0, x3:1, y3:0, stop:0 #D32F2F, stop:0.5 #E0E0E0, stop:1 #1976D2);
-                margin: 2px 0;
-                border-radius: 5px;
-            }
-            QSlider::handle:horizontal {
-                background: #1976D2;
-                border: 2px solid #0D47A1;
-                width: 20px;
-                height: 20px;
-                margin: -7px 0;
-                border-radius: 10px;
-            }
-        """)
-        self.w_pc1.valueChanged.connect(self.on_weight_changed)
-        w_pc1_layout.addWidget(self.w_pc1)
-        w_pc1_layout.addStretch()
-        
-        slider_container.addLayout(w_pc1_layout)
-        
-        # PC2スライダー
+        # 構成バランススライダー（データ読込後に動的ラベルが設定される）
         w_pc2_layout = QHBoxLayout()
-        self.w_pc2_label = QLabel("PC2 (汎用性): 0%")
-        self.w_pc2_label.setStyleSheet(f"font-size: {FontSize.SLIDER_LABEL}px; font-weight: bold; color: #2196F3; min-width: 200px;")
+        self.w_pc2_label = QLabel("PC2: 0% (データ読込後に表示)")
+        self.w_pc2_label.setStyleSheet(f"font-size: {FontSize.SLIDER_LABEL}px; font-weight: bold; color: #2196F3; min-width: 250px;")
         w_pc2_layout.addWidget(self.w_pc2_label)
         
         self.w_pc2 = QSlider(Qt.Orientation.Horizontal)
@@ -953,11 +921,27 @@ class PCApp(QMainWindow):
     
     def on_weight_changed(self, value):
         """スライダーが変更された時の共通処理"""
-        pc1_name = getattr(self, "pc1_desc", "PC1")
-        pc2_name = getattr(self, "pc2_desc", "PC2")
+        # 動的に生成されたPC2の軸ラベルを使用（データ読込前はデフォルト値）
+        pc2_desc = getattr(self, "pc2_desc", "構成バランス")
         
-        self.w_pc1_label.setText(f"{pc1_name}: {self.w_pc1.value()}%")
-        self.w_pc2_label.setText(f"{pc2_name}: {self.w_pc2.value()}%")
+        # PC2スライダーの表示（動的ラベルを使用）
+        balance_val = self.w_pc2.value()
+        # 軸ラベルから左側と右側の意味を抽出（"左 ↔ 右"の形式を想定）
+        if "↔" in pc2_desc:
+            parts = pc2_desc.split("↔")
+            left_label = parts[0].strip()
+            right_label = parts[1].strip()
+            
+            if balance_val > 20:
+                direction = f"→ {right_label}"
+            elif balance_val < -20:
+                direction = f"{left_label} ←"
+            else:
+                direction = "中間"
+            self.w_pc2_label.setText(f"PC2: {balance_val}% ({direction})")
+        else:
+            # ↔が含まれない場合（データ読込前など）
+            self.w_pc2_label.setText(f"PC2: {balance_val}%")
         
         p_val = self.price_slider.value()
         if p_val == 100:
@@ -976,7 +960,7 @@ class PCApp(QMainWindow):
             self._update_info_panels()
 
     def signals_blocked(self):
-        return self.w_pc1.signalsBlocked() or self.w_pc2.signalsBlocked() or self.price_slider.signalsBlocked()
+        return self.w_pc2.signalsBlocked() or self.price_slider.signalsBlocked()
     
     def apply_preset(self, preset_name):
         """プリセット選択時の処理"""
@@ -984,15 +968,12 @@ class PCApp(QMainWindow):
         self.current_preset_name = preset_name
         
         # スライダーを更新（シグナルを一時停止して無限ループを防ぐ）
-        self.w_pc1.blockSignals(True)
         self.w_pc2.blockSignals(True)
         self.price_slider.blockSignals(True)
         
-        self.w_pc1.setValue(preset["w_pc1"])
         self.w_pc2.setValue(preset["w_pc2"])
         self.price_slider.setValue(100) # プリセット時は予算リセット
         
-        self.w_pc1.blockSignals(False)
         self.w_pc2.blockSignals(False)
         self.price_slider.blockSignals(False)
         
@@ -1032,48 +1013,93 @@ class PCApp(QMainWindow):
             import traceback
             traceback.print_exc()
 
+    def _generate_dynamic_label(self, component_vector, feature_names):
+        """
+        主成分の固有ベクトルから動的にラベルを生成する
+        
+        Args:
+            component_vector: PCAの固有ベクトル（1つの主成分）
+            feature_names: 特徴量の名前リスト
+        
+        Returns:
+            str: 動的に生成された軸ラベル
+        """
+        # 寄与度の絶対値が大きい順にインデックスを取得
+        sorted_indices = np.argsort(np.abs(component_vector))[::-1]
+        
+        pos_features = []  # プラスに寄与している特徴量
+        neg_features = []  # マイナスに寄与している特徴量
+        
+        # しきい値（これより小さい寄与は無視）
+        threshold = 0.2
+        
+        for idx in sorted_indices:
+            val = component_vector[idx]
+            if abs(val) < threshold:
+                continue
+            
+            if val > 0:
+                pos_features.append(feature_names[idx])
+            else:
+                neg_features.append(feature_names[idx])
+        
+        # ラベル生成ロジック
+        # パターンA: プラスとマイナス両方に強い要素がある（対立軸）
+        if pos_features and neg_features:
+            pos_str = "・".join(pos_features[:2])  # 長くなりすぎないよう上位2つまで
+            neg_str = "・".join(neg_features[:2])
+            return f"{neg_str}重視 ↔ {pos_str}重視"
+        
+        # パターンB: 全部プラス（総合力軸）
+        elif pos_features:
+            return f"ロースペック ↔ {pos_features[0]}等ハイスペック"
+        
+        # パターンC: 全部マイナス（総合力軸の逆）
+        elif neg_features:
+            return f"{neg_features[0]}等ハイスペック ↔ ロースペック"
+        
+        return "特徴なし"
+
     def _run_pca(self):
-        """PCA（主成分分析）の実行：性能の方向性とバランスを抽出"""
+        """PCA（主成分分析）の実行：総合性能と構成バランスを抽出"""
         features = ["cpu_score", "gpu_score", "ram_gb", "storage_gb"]
+        feature_display_names = ["CPU", "GPU", "RAM", "SSD"]
         X = self.df[features].values
         
         # 1. 標準化（各特徴量のスケールを揃える）
         self.scaler = StandardScaler()
         X_scaled = self.scaler.fit_transform(X)
         
-        # 2. 行中心化（各PCの「平均的な性能」を差し引く）
-        # これにより、PC1が「総合性能」ではなく「CPU寄りかGPU寄りか」などの「構成の偏り」を表すようになる
-        X_row_mean = X_scaled.mean(axis=1, keepdims=True)
-        X_centered = X_scaled - X_row_mean
-        
-        # 3. PCA実行
-        n_comp = min(2, X_centered.shape[0], X_centered.shape[1])
+        # 2. PCA実行（行中心化なし：素直にデータの分散を見る）
+        # PC1: 通常は全特徴量の総合力（総合性能）
+        # PC2: 特徴量間の対立軸（例：GPU重視 vs CPU重視）
+        n_comp = min(2, X_scaled.shape[0], X_scaled.shape[1])
         self.pca = PCA(n_components=n_comp)
-        pcs = self.pca.fit_transform(X_centered)
+        pcs = self.pca.fit_transform(X_scaled)
         
         self.df["PC1"] = pcs[:, 0]
         self.df["PC2"] = pcs[:, 1] if pcs.shape[1] > 1 else 0
         
-        # 4. 総合性能（サイズ用）と価格（色用）の準備
-        self.df["total_perf"] = X_row_mean.flatten()
+        # 3. 総合性能（サイズ用）と価格（色用）の準備
+        # 総合性能は標準化後の値の平均を使用（スケールを揃えた上で平均）
+        self.df["total_perf"] = X_scaled.mean(axis=1)
         self.df["price_norm"] = (self.df["price"] - self.df["price"].min()) / (self.df["price"].max() - self.df["price"].min() + 1e-9)
 
-        # 5. 軸の意味を判定
-        features_names = ['CPU', 'GPU', 'RAM', 'SSD']
-        components = self.pca.components_
-        pos_idx1 = np.argmax(components[0])
-        neg_idx1 = np.argmin(components[0])
-        self.pc1_desc = f"{features_names[neg_idx1]}重視 ↔ {features_names[pos_idx1]}重視"
-        if components.shape[0] >= 2:
-            pos_idx2 = np.argmax(components[1])
-            neg_idx2 = np.argmin(components[1])
-            self.pc2_desc = f"{features_names[neg_idx2]}重視 ↔ {features_names[pos_idx2]}重視"
+        # 4. 軸の意味を動的に判定（データから自動生成）
+        self.pc1_desc = self._generate_dynamic_label(
+            self.pca.components_[0], 
+            feature_display_names
+        )
+        if self.pca.components_.shape[0] >= 2:
+            self.pc2_desc = self._generate_dynamic_label(
+                self.pca.components_[1], 
+                feature_display_names
+            )
         else:
             self.pc2_desc = "なし"
 
     def _calculate_scores_and_pareto(self):
         """嗜好ベクトルによる推薦スコアの計算"""
-        w_pc1 = self.w_pc1.value() / 100.0
         w_pc2 = self.w_pc2.value() / 100.0
         
         # 予算フィルター
@@ -1083,16 +1109,34 @@ class PCApp(QMainWindow):
         
         self.df["is_affordable"] = self.df["price"] <= max_price
         
-        # スコア計算：嗜好ベクトルとの内積（方向の一致度）
-        # PC1, PC2空間での位置がユーザの望む方向にあるものを高く評価
-        self.df["score"] = w_pc1 * self.df["PC1"] + w_pc2 * self.df["PC2"]
+        # スコア計算用のデータセット（予算内があればそれ、なければ全体）
+        score_df = self.df[self.df["is_affordable"]] if self.df["is_affordable"].any() else self.df
         
-        # 予算内のPCから最高スコアを選択
-        affordable_df = self.df[self.df["is_affordable"]]
-        if not affordable_df.empty:
-            self.best_pc = affordable_df.sort_values("score", ascending=False).iloc[0]
+        # PC1とPC2を正規化（同じスケールで評価するため）
+        pc1_min = score_df["PC1"].min()
+        pc1_max = score_df["PC1"].max()
+        if pc1_max - pc1_min > 1e-9:
+            pc1_norm = (score_df["PC1"] - pc1_min) / (pc1_max - pc1_min)
         else:
-            # 予算内がない場合は全PCから
+            pc1_norm = 0.5
+        
+        pc2_min = score_df["PC2"].min()
+        pc2_max = score_df["PC2"].max()
+        if pc2_max - pc2_min > 1e-9:
+            pc2_norm = (score_df["PC2"] - pc2_min) / (pc2_max - pc2_min)  # 0-1に正規化
+            # w_pc2が-1～+1の範囲なので、-1～+1にスケール
+            pc2_scaled = (pc2_norm - 0.5) * 2  # -1～+1の範囲に変換
+        else:
+            pc2_scaled = 0
+        
+        # スコア = 性能(50%) + 構成の好み(50%)
+        # 両方とも-1～+1の範囲で同等に評価
+        self.df.loc[score_df.index, "score"] = 0.5 * (pc1_norm - 0.5) * 2 + 0.5 * w_pc2 * pc2_scaled
+        
+        # 最高スコアのPCを選択（予算内優先）
+        if self.df["is_affordable"].any():
+            self.best_pc = self.df[self.df["is_affordable"]].sort_values("score", ascending=False).iloc[0]
+        else:
             self.best_pc = self.df.sort_values("score", ascending=False).iloc[0]
 
     def _update_visualization(self):
@@ -1109,26 +1153,39 @@ class PCApp(QMainWindow):
         # 散布図の描画
         # 色：価格（安いほど明るい/高いほど暗い）
         # サイズ：総合性能（大きいほど高性能）
+        # total_perfを正規化して適切なサイズ範囲（20-100）にマッピング
+        perf_min = self.df["total_perf"].min()
+        perf_max = self.df["total_perf"].max()
+        if perf_max - perf_min > 1e-9:
+            perf_norm = (self.df["total_perf"] - perf_min) / (perf_max - perf_min)
+        else:
+            perf_norm = 0.5
+        sizes = 20 + perf_norm * 80  # 20から100の範囲
+        
         scatter = self.ax.scatter(
             self.df["PC1"], self.df["PC2"],
             c=self.df["price"], cmap="viridis_r",
-            s=(self.df["total_perf"] - self.df["total_perf"].min() + 1) * 100,
+            s=sizes,
             alpha=0.6, edgecolors="white", linewidth=0.5, label="PCモデル"
         )
         
         # 予算外のPCをグレーアウト
         out_of_budget = self.df[~self.df["is_affordable"]]
         if not out_of_budget.empty:
+            out_perf_norm = (out_of_budget["total_perf"] - perf_min) / (perf_max - perf_min + 1e-9)
+            out_sizes = 20 + out_perf_norm * 80
             self.ax.scatter(
                 out_of_budget["PC1"], out_of_budget["PC2"],
-                c="lightgray", s=(out_of_budget["total_perf"] - out_of_budget["total_perf"].min() + 1) * 100,
+                c="lightgray", s=out_sizes,
                 alpha=0.3, edgecolors="none", zorder=2
             )
 
         # 推奨PCを強調
+        best_perf_norm = (self.best_pc["total_perf"] - perf_min) / (perf_max - perf_min + 1e-9)
+        best_size = 50 + best_perf_norm * 150  # 50から200の範囲（目立たせる）
         self.ax.scatter(
             self.best_pc["PC1"], self.best_pc["PC2"],
-            c="red", s=(self.best_pc["total_perf"] - self.df["total_perf"].min() + 1) * 150,
+            c="red", s=best_size,
             marker="*", edgecolors="yellow", linewidth=1.5, zorder=10, label="推奨PC"
         )
         
@@ -1144,8 +1201,8 @@ class PCApp(QMainWindow):
             self.cax = divider.append_axes("right", size="5%", pad=0.1)
             self.colorbar = self.fig.colorbar(scatter, cax=self.cax, label="価格 (円)")
         else:
-            # 2回目以降は中身だけ更新
-            self.colorbar = self.fig.colorbar(scatter, cax=self.cax, label="価格 (円)")
+            # 2回目以降は既存のカラーバーを更新
+            self.colorbar.update_normal(scatter)
             
         self.ax.grid(True, alpha=0.2)
         self.ax.legend(loc='best', fontsize=FontSize.GRAPH_LEGEND)
@@ -1174,7 +1231,6 @@ class PCApp(QMainWindow):
         self.recommendation_panel.update_recommendation(
             best_pc=self.best_pc,
             preset_name=self.current_preset_name,
-            w_pc1=self.w_pc1.value() / 100.0,
             w_pc2=self.w_pc2.value() / 100.0
         )
         
